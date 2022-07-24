@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
 const Filter = ({ filterState, handler }) => {
   return (
@@ -19,15 +20,20 @@ const PersonForm = ({ formHandler, nameState, nameHandler, numState, numHandler 
 const Persons = ({ list }) => list.map(person => <p key={person.id}>{person.name} {person.number}</p>)
 
 const App = () => {
-  const [person, setPersons] = useState([
-    { name: 'Arto Hellas', number: '040-123456', id: 1 },
-    { name: 'Ada Lovelace', number: '39-44-5323523', id: 2 },
-    { name: 'Dan Abramov', number: '12-43-234345', id: 3 },
-    { name: 'Mary Poppendieck', number: '39-23-6423122', id: 4 }
-  ]);
+  const [person, setPersons] = useState([]);
   const [newName, setNewName] = useState('');
   const [newNumber, setNewNumber] = useState('');
   const [filter, setFilter] = useState('');
+
+  const setPersonsFromData = () => {
+    axios
+      .get('http://localhost:3001/persons')
+      .then(response => {
+        setPersons(response.data);
+      })
+  }
+
+  useEffect(setPersonsFromData, []);
 
   const checkDuplicate = () => {
     if (person.find(person => newName === person.name)) return true;
