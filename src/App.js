@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import noteService from "./services/notes";
 
 const Filter = ({ filterState, handler }) => {
   return (
@@ -17,7 +17,13 @@ const PersonForm = ({ formHandler, nameState, nameHandler, numState, numHandler 
   )
 }
 
-const Persons = ({ list }) => list.map(person => <p key={person.id}>{person.name} {person.number}</p>)
+const Persons = ({ list, deleteNum }) => list.map(person =>
+  <div key={person.id}>
+    {person.name} {person.number}
+    <button value={person.id} onClick={deleteNum(person.name)}>
+      delete
+    </button>
+  </div>)
 
 const App = () => {
   const [person, setPersons] = useState([]);
@@ -26,10 +32,10 @@ const App = () => {
   const [filter, setFilter] = useState('');
 
   const setPersonsFromData = () => {
-    axios
-      .get('http://localhost:3001/persons')
-      .then(response => {
-        setPersons(response.data);
+    noteService
+      .getAll()
+      .then(phonebook => {
+        setPersons(phonebook);
       })
   }
 
@@ -44,16 +50,47 @@ const App = () => {
   const addName = e => {
     e.preventDefault();
 
-    if (checkDuplicate()) {
-      alert(`${newName} is already added to the phonebook`);
-    } else {
-      setPersons(person.concat({
-        name: newName,
-        number: newNumber,
-        id: person.length + 1,
-      }));
+    const newPerson = {
+      name: newName,
+      number: newNumber,
+    }
 
-      setNewName('');
+    if (checkDuplicate()) {
+      if (window.confirm(`${newName} is already added to the phonebook, 
+        replace the old number with new one?`)) {
+
+        // Find person's id
+        const id = person.find(item => item.name === newName).id;
+
+        noteService
+          .update(newPerson, id)
+          .then(newNum => {
+            setPersons(person.map(item => item.id === id ? newNum : item));
+          });
+      };
+    } else {
+      noteService
+        .create(newPerson)
+        .then(personData => {
+          setPersons(person.concat(personData));
+        })
+    }
+
+    setNewName('');
+    setNewNumber('');
+  }
+
+  const deleteNum = (name) => {
+    return e => {
+      if (window.confirm(`Delete ${name}`)) {
+        // != because num.id is an int and e.target.value is a string
+        const filteredNumbers = person.filter(num => num.id != e.target.value);
+        noteService
+          .deleteItem(e.target.value)
+          .then(() => {
+            setPersons(filteredNumbers);
+          });
+      }
     }
   }
 
@@ -78,7 +115,7 @@ const App = () => {
         numHandler={handleNumChange}
       />
       <h3>Numbers</h3>
-      <Persons list={filteredItems} />
+      <Persons list={filteredItems} deleteNum={deleteNum} />
     </div>
   )
 }
